@@ -51,4 +51,3 @@ Possibilité de mettre en place un cluster de memcached grâce à un algorithme 
 
 * Conservation du mécanisme de « sticky tag »
   * Permet de ne récupérer la session dans memcached qu’en cas de bascule Jboss
-
