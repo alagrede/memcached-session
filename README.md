@@ -1,3 +1,4 @@
+
 # memcached-session
 External session storage with memcached for Spring application
 
@@ -37,10 +38,10 @@ Possibilité de mettre en place un cluster de memcached grâce à un algorithme 
 ![Image of Yaktocat](http://lagrede.alwaysdata.net/site_media/github/memcached/consistent_hashing_2.png)
 
 ## Création d'une session
-![Image of Yaktocat](http://lagrede.alwaysdata.net/site_media/github/memcached/creation_session.png)
+![Image of Yaktocat](http://lagrede.alwaysdata.net/site_media/github/memcached/creation_session1.png)
 
 ## Récupération d'une session
-![Image of Yaktocat](http://lagrede.alwaysdata.net/site_media/github/memcached/fail_1.png)
+![Image of Yaktocat](http://lagrede.alwaysdata.net/site_media/github/memcached/fail_2.png)
 
 
 * Sauvegarde de la session uniquement lors d’un changement
