@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE log4j:configuration SYSTEM "log4j.dtd">
+
+<!-- ===================================================================== -->
+<!--                                                                       -->
+<!--  Log4j Configuration                                                  -->
+<!--                                                                       -->
+<!-- ===================================================================== -->
+
+<log4j:configuration xmlns:log4j="http://jakarta.apache.org/log4j/" debug="false">
+
+   <!-- ============================== -->
+   <!-- Append messages to the console -->
+   <!-- ============================== -->
+
+   <appender name="CONSOLE" class="org.apache.log4j.ConsoleAppender">
+      <errorHandler class="org.jboss.logging.util.OnlyOnceErrorHandler"/>
+      <param name="Target" value="System.out"/>
+
+      <layout class="org.apache.log4j.PatternLayout">
+         <param name="ConversionPattern" value="%d{yyyy-MM-dd HH:mm:ss} %-5p [%-25.25c{1}] %-15.15X{name} - %m%n"/>
+      </layout>
+   </appender>
+
+   <!-- ======================== -->
+   <!-- categories -->
+   <!-- ======================== -->
+
+  
+   <category name="fr.lagrede.session">
+      <priority value="DEBUG"/>
+   </category> 
+
+ 
+   <!-- ======================= -->
+   <!-- Setup the Root category -->
+   <!-- ======================= -->
+
+   <root>
+      <priority value="INFO"/>
+      <appender-ref ref="CONSOLE"/>
+   </root>
+
+</log4j:configuration>

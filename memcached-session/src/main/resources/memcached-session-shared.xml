@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+                           http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd">
+
+
+  
+    <bean id="memcachedSessionFilter" class="fr.lagrede.session.filter.MemcachedSessionFilter">
+        <property name="cachedServer" ref="pmSpyMemcached" />
+    </bean>
+
+    <bean id="pmSpyMemcached" class="fr.lagrede.session.client.implementation.PmSpyMemcached" />
+
+    <bean id="memcachedContextAware" class="fr.lagrede.session.beanutils.MemcachedContextAware" />
+       
+</beans>
+

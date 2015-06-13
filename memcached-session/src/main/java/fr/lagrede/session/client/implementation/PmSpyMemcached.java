@@ -1,0 +1,320 @@
+package fr.lagrede.session.client.implementation;
+
+import java.io.IOException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
+import net.spy.memcached.AddrUtil;
+import net.spy.memcached.ConnectionFactoryBuilder;
+import net.spy.memcached.ConnectionFactoryBuilder.Locator;
+import net.spy.memcached.DefaultHashAlgorithm;
+import net.spy.memcached.FailureMode;
+import net.spy.memcached.MemcachedClient;
+import net.spy.memcached.internal.OperationFuture;
+import net.spy.memcached.transcoders.SerializingTranscoder;
+import net.spy.memcached.transcoders.Transcoder;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.InitializingBean;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.Assert;
+
+import fr.lagrede.session.client.MemcachedClientController;
+import fr.lagrede.session.configuration.MemcachedConfigurator;
+import fr.lagrede.session.configuration.implementation.DefaultMemcachedConfigurator;
+import fr.lagrede.session.exception.CommunicationException;
+
+
+/**
+ * Impl�mentation Spymemcached du client pour le serveur de cache
+ * G�re un pool de connexion
+ * @author anthony.lagrede
+ *
+ */
+public class PmSpyMemcached implements MemcachedClientController, InitializingBean {
+    
+    final Logger logger = LoggerFactory.getLogger(PmSpyMemcached.class);
+    
+    private boolean isRunning = false;
+    
+    private MemcachedPool memcachedPool = null;
+
+    @Autowired(required = false)
+    private MemcachedConfigurator configurator = new DefaultMemcachedConfigurator();
+
+    @Autowired(required = false)
+    private Transcoder<Object> transcoder = null;
+    
+    /*
+     * D�finition de la strat�gie de serialisation par d�faut 
+     */
+    @Override
+    public void afterPropertiesSet() throws Exception {
+
+    }
+    
+
+    /**
+     * {@inheritDoc}<br/>
+     * @param transcoder:  Impl�mentation par d�faut <b>{@link SerializingTranscoder} <i>CompressionThreshold(16384)<i></b>
+     */
+    @Override
+    public void setTranscoder(Transcoder<Object> transcoder) {
+        this.transcoder = transcoder;
+    }
+
+    /**
+     * {@inheritDoc}<br/> 
+     * @param configurator:  Impl�mentation par d�faut <b>{@link DefaultMemcachedConfigurator}</b>
+     */
+    @Override
+    public void setConfigurator(MemcachedConfigurator configurator) {
+        Assert.notNull(configurator, "Missing memcached configuration");
+        this.configurator = configurator;
+    }
+
+    
+    
+    public PmSpyMemcached() {}
+
+    /**
+     * {@inheritDoc}<br />
+     * Il est impossible dans cette impl�mentation de cr�er plusieurs fois le pool de connexion. Si le pool est d�j� cr�e on ne fait rien
+     */
+    @Override
+    public synchronized void init() throws IOException {
+        if (isRunning)
+            return;
+        
+        memcachedPool = new MemcachedPool(configurator.getNbrMemcachedClientsInPool());
+
+        isRunning = true;
+        logger.info("Memcached client created.");
+    }
+    
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void set(String key, Object o) {
+        if (! isRunning)
+            return;
+
+        try {
+        
+            long startTime = 0;
+            if (logger.isDebugEnabled()) {
+                startTime = System.currentTimeMillis(); 
+            }
+
+            OperationFuture<Boolean> op = memcachedPool.getInstance().set(key, configurator.getMemcachedDataLifeTime(), o);
+            new Thread(new AsyncOperationFuture<Boolean>(op, MemcachedOperationType.SET, startTime)).start();
+            
+            if (logger.isDebugEnabled()) {
+                logger.debug("Put to memcached: " + key);
+            }
+
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Object get(String key) throws CommunicationException {
+        if (! isRunning)
+            return null;
+        
+        try {
+        
+            long t1 = 0;
+            if (logger.isDebugEnabled()) {
+                t1 = System.currentTimeMillis();
+            }
+            
+            Object obj = memcachedPool.getInstance().get(key);
+            
+            if (logger.isDebugEnabled()) {
+                long t2 = System.currentTimeMillis();
+                logger.debug("memcached get : " + (t2 - t1) + " ms");
+            }
+        
+            return obj;
+        
+        } catch (RuntimeException e) {
+            throw new CommunicationException(e);
+        }
+
+    }
+    
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void delete(String key) {
+        if (! isRunning)
+            return;
+        
+        try {
+
+            long startTime = 0;
+            if (logger.isDebugEnabled()) {
+                startTime = System.currentTimeMillis(); 
+            }
+
+            OperationFuture<Boolean> op = memcachedPool.getInstance().delete(key);
+            new Thread(new AsyncOperationFuture<Boolean>(op, MemcachedOperationType.DELETE, startTime)).start();
+            
+        } catch (IllegalStateException e) {
+            logger.error(e.getMessage());
+        }
+    }
+
+    /**
+     * {@inheritDoc}<br/>
+     * Arr�te tous les clients du pool. <i>Ne fera rien si le pool est d�j� arr�t�.</i>
+     */
+    @Override
+    public synchronized void shutdown() {
+        
+        if (memcachedPool == null || ! isRunning)
+            return;
+        
+        memcachedPool.shutdown();
+        
+        isRunning = false;
+        logger.info("Memcached client shutdown...");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isRunning() {
+        return isRunning;
+    }
+    
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isMemcachedActivated() {
+        return configurator.isMemcachedActivated();
+    }
+
+    
+    /**
+     * Class interne g�rant un Pool de connexion � Memcached<br/>
+     * Ce pool permet de jouer sur la performance des acc�s � memcached en multipliant par {@link #clientsInPool} le nombre de clients et donc le nombre de Threads 
+     *  
+     * @author anthony.lagrede
+     *
+     */
+    private class MemcachedPool {
+        
+        private MemcachedClient[] memcachedClients = null;
+        private int clientsInPool = 1;
+        
+        private MemcachedPool(int clientsInPool) {
+            
+            this.clientsInPool = clientsInPool;
+            
+            memcachedClients = new MemcachedClient[clientsInPool];
+            try {
+
+                for (int i = 0; i < clientsInPool; i ++) {
+                    memcachedClients[i] = createMemcachedClient();
+                }
+                
+            } catch (IOException e) {
+                logger.warn(e.getMessage());
+            }
+
+        }
+
+        public MemcachedClient getInstance() {
+            int i = (int) (Math.random()* clientsInPool);
+            return memcachedClients[i];
+        }
+        
+        private MemcachedClient createMemcachedClient() throws IOException {
+            
+            ConnectionFactoryBuilder builder = new ConnectionFactoryBuilder();
+            builder.setLocatorType(Locator.CONSISTENT);
+            builder.setFailureMode(FailureMode.Redistribute);
+            builder.setHashAlg(DefaultHashAlgorithm.KETAMA_HASH);
+            builder.setProtocol(configurator.getMemcachedProtocolMode());
+            builder.setOpTimeout(configurator.getMemcachedOperationTimeout());
+            builder.setMaxReconnectDelay(configurator.getMemcachedReconnectDelay());
+            builder.setTimeoutExceptionThreshold(configurator.getMemcachedThresholdTimeout());
+            builder.setShouldOptimize(true);
+
+            if (transcoder == null) {
+                SerializingTranscoder tr = new SerializingTranscoder();
+                tr.setCompressionThreshold(configurator.getCompressionThreshold());
+                transcoder = tr;
+            }
+            
+            builder.setTranscoder(transcoder);
+            
+            return new MemcachedClient(builder.build(), AddrUtil.getAddresses(configurator.getMemcachedServersList()));
+            
+        }
+        
+        private void shutdown() {
+            for (int i = 0; i < clientsInPool; i ++) {
+                memcachedClients[i].shutdown();
+            }
+        }
+    }
+    
+
+    private enum MemcachedOperationType { UNKNOWN_OP, SET, GET, DELETE }
+    
+    /**
+     * Classe interne permettant de timer les op�rations en asynchrone 
+     * @author anthony.lagrede
+     *
+     * @param <T>
+     */
+    private class AsyncOperationFuture<T> implements Runnable {
+
+        private OperationFuture<T> op = null;
+        private MemcachedOperationType operationType = MemcachedOperationType.UNKNOWN_OP;
+        long startTime = 0;
+        
+        private AsyncOperationFuture(OperationFuture<T> op, MemcachedOperationType operationType, long startTime) {
+            this.op = op; 
+            this.operationType = operationType;
+            this.startTime = startTime;
+        }
+        
+        @Override
+        public void run() {
+        
+            try {
+                op.get(configurator.getMemcachedOperationTimeout(), TimeUnit.MILLISECONDS);
+            } catch (InterruptedException e) {
+                logger.error("AsyncOperation interrupted.", e);
+            } catch (TimeoutException e) {
+                logger.error("AsyncOperation timeout.", e);
+            } catch (ExecutionException e) {
+                logger.error("AsyncOperation executionException.", e);
+            } catch (Exception e) {
+                logger.error("AsyncOperation Exception.", e);
+            }
+
+            if (logger.isDebugEnabled()) {
+                long endTime = System.currentTimeMillis(); 
+                logger.debug("memcached " + operationType + " : " + (endTime - startTime) + " ms");
+            }
+
+        }
+
+    }
+
+}

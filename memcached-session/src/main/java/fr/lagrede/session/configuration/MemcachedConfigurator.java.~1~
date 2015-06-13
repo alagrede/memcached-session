@@ -1,0 +1,70 @@
+package com.priceminister.session.configuration;
+
+import java.util.List;
+
+import net.spy.memcached.ConnectionFactoryBuilder.Protocol;
+
+
+public interface MemcachedConfigurator {
+
+    /**
+     * Activation de memcached
+     * <b>Il faut désactiver puis relancer les clients memcached pour que toutes les propriétés soient prises en compte</b>
+     */
+    boolean isMemcachedActivated();
+    
+    /**
+     * Liste des propriétés à ne pas surveiller<br/>
+     * <b>modifiable à chaud</b>
+     */
+    List<String> getMemcachedExcludedSessionAttributes();
+
+    /**
+     * Durée de vie des données dans le memcached<br/>
+     * <b>modifiable à chaud</b>
+     */
+    int getMemcachedDataLifeTime();
+    
+    /**
+     * Nombre de clients memcached dans le pool de connexion<br/>
+     * <b>modifiable quand memcached est désactivé</b> 
+     */
+    int getNbrMemcachedClientsInPool();
+    
+    /**
+     * Timeout d'une opération<br/>
+     * <b>modifiable quand memcached est désactivé</b> 
+     */
+    long getMemcachedOperationTimeout();
+
+    /**
+     * Temps entre chaque tentative de reconnexion<br/>
+     * <b>modifiable quand memcached est désactivé</b>
+     */
+    long getMemcachedReconnectDelay();
+
+    /**
+     * Nombre de timeout de connexion avant la fermeture définitive du serveur<br/>
+     * <b>modifiable quand memcached est désactivé</b>  
+     */
+    int getMemcachedThresholdTimeout();
+
+    /**
+     * Liste des serveurs memcached <i>ex: "localhost:11211 localhost:11212"</i><br/>
+     * <b>modifiable quand memcached est désactivé</b>
+     */
+    String getMemcachedServersList();
+
+    /**
+     * Protocol de communication avec le serveur Memcached (TEXT ou BINARY)<br/>
+     * <b>modifiable quand memcached est désactivé</b>
+     */
+    Protocol getMemcachedProtocolMode();
+    
+    
+    int getCompressionThreshold();
+    
+    
+    boolean shouldOptimize();
+    
+}
