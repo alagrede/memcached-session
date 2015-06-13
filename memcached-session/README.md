@@ -12,7 +12,7 @@
 
 
  - Add a new listener in web.xml
-
+```xml
   <!-- Session Listener -->
   <listener>
     <listener-class>fr.lagrede.session.listener.MemcachedSessionAttributeListener</listener-class>
@@ -26,18 +26,17 @@
       <param-name>memcachedConfiguratorClass</param-name> 
       <param-value>fr.lagrede.session.configuration.implementation.DefaultMemcachedConfigurator</param-value> 
      </context-param>
-
-
+```
 
  - Import internal spring memcached-session configuration in your project
-
+```xml
     <!-- Internal spring configuration -->
     <import resource="classpath*:memcached-session-shared.xml" />
-
+```
 
 
  -  Add a spring security filter named: memcachedSessionFilter
-
+```xml
           <!-- Spring Filters -->
           <security:filter-chain pattern="/**" filters="
                memcachedSessionFilter,
@@ -48,13 +47,13 @@
 
          Or with security namespace:
           <custom-filter position="FIRST" ref="memcachedSessionFilter" />
-
+```
 
 ####################################################################################
 # Configuration
 ####################################################################################
 
-
+```
 # Memcached activation
 # stop and run for refresh all properties
 memcached.is_actived = true
@@ -91,6 +90,6 @@ memcached.reconnect.delay = 30
 # Max datas size in bytes before trigger compression
 # [static property]
 memcached.compressionThreshold = 16384
-
+```
 
 
