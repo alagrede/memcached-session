@@ -35,13 +35,13 @@ Cette librairie est:
 Possibilité de mettre en place un cluster de memcached grâce à un algorithme de "Consistent Hashing"
 * Les serveurs memcached sont disposés sur un cercle
 * Les données de session sont stockées sur le memcached le plus proche sur le cercle
-![Image of Yaktocat](http://lagrede.alwaysdata.net/site_media/github/memcached/consistent_hashing_2.png)
+![Image of Yaktocat](http://lagrede.alwaysdata.net/memcached/consistent_hashing_2.png)
 
 ## Création d'une session
-![Image of Yaktocat](http://lagrede.alwaysdata.net/site_media/github/memcached/creation_session1.png)
+![Image of Yaktocat](http://lagrede.alwaysdata.net/memcached/creation_session1.png)
 
 ## Récupération d'une session
-![Image of Yaktocat](http://lagrede.alwaysdata.net/site_media/github/memcached/fail_2.png)
+![Image of Yaktocat](http://lagrede.alwaysdata.net/memcached/fail_2.png)
 
 
 * Sauvegarde de la session uniquement lors d’un changement
